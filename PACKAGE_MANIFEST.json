@@ -1,0 +1,151 @@
+{
+  "project": "YESI Google Sheets Fulfillment WMS",
+  "status": "Source package; not deployed; live Google integration requires IT setup",
+  "testsPassed": 16,
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "a8d689b5fd85db832202d188ffd49065a34dd464528ef914c9800bb9113a3639"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "40c0011788f3870bb0ea3551f8faa9375aea0190831cf01c58286fa7478d2a1d"
+    },
+    {
+      "path": "netlify.toml",
+      "sha256": "08e027f7e2f51d6d6669b325024d3dd52c2065781eb8f55dc66a34858b9caf88"
+    },
+    {
+      "path": "package.json",
+      "sha256": "f5b3c8b55955a1e914a83f84f57cd2bb5fcf51b4edbe1a4262b034cd65df9971"
+    },
+    {
+      "path": "README.md",
+      "sha256": "649635a98e06f87827b10dbf8617ecc16080f50aefdfeb7a06b0f2bc75563bc7"
+    },
+    {
+      "path": "START_HERE_FOR_IT.txt",
+      "sha256": "ce76f426824945a846e6231db75495af579df86f2bccd54135c1cfa06e81dd29"
+    },
+    {
+      "path": "core/engine.mjs",
+      "sha256": "26e3ad24b5c1047a26d0a566c3f500f5d834b3c0dce74d8aebd82ed27bb48c0c"
+    },
+    {
+      "path": "dist/app.js",
+      "sha256": "b5fd1ca16e824520f2dc656c4f533c4cf655826e8173bddde289c5cb14d8c045"
+    },
+    {
+      "path": "dist/config.js",
+      "sha256": "b8e8d3706e2d3fca862083daf8663ad44519ee61a88bf5ddd13e0343660aef56"
+    },
+    {
+      "path": "dist/index.html",
+      "sha256": "d08b488178d380ad5205dec072da1f6ededa54330d03a1948c1f4840329e744d"
+    },
+    {
+      "path": "dist/invoice.css",
+      "sha256": "d3745e17fe11ff364ebe1af38114206139b28d94ff517fa597e4e8eb0233b2e4"
+    },
+    {
+      "path": "dist/styles.css",
+      "sha256": "d9196ef761514c675700b70c1ab055893c615e9f9e62cf57b3d45240834361cb"
+    },
+    {
+      "path": "dist/_redirects",
+      "sha256": "064b6e68a61ebaa9d92d0d4e287bf4f14aae7b01b3aec363a9ccc33a81936c17"
+    },
+    {
+      "path": "docs/ACCEPTANCE_TESTS.md",
+      "sha256": "379fe728f662bb72db8d121cb18a15457d80f1d865311611ec6a80dc243b515b"
+    },
+    {
+      "path": "docs/IT_SETUP.md",
+      "sha256": "6005689250c36be2dc39791b94fb18a4fb3b99071de77b1c5d5e3fc6c81362a9"
+    },
+    {
+      "path": "docs/LIMITS.md",
+      "sha256": "5e566857c6cbb46005c21843401f00c55dd9444ab64a66c418e6495d57fc038f"
+    },
+    {
+      "path": "docs/OPERATING_GUIDE.md",
+      "sha256": "068c151b3d919d1b6fe7bc5531ab0e445512637ac489b607c0dbbe5fb95600aa"
+    },
+    {
+      "path": "docs/PERMISSIONS.md",
+      "sha256": "35888ee216db69bd74d1ab00a3deee08b8ffe0b9642859123fac3c0866715a88"
+    },
+    {
+      "path": "docs/SHEET_SCHEMA.md",
+      "sha256": "80315f4a2b1a00c8c13cfa224d06a777e08d6f95d94bd42235cfa56d15585379"
+    },
+    {
+      "path": "google-apps-script/appsscript.json",
+      "sha256": "e060ea0ddbc7fad8b4dcac4dc51eaca1575d16b791713d68d2896b05117fec21"
+    },
+    {
+      "path": "google-apps-script/Code.gs",
+      "sha256": "4ccf0a38065461134896c223ac5834467d1fc7e688c9be79f73c4c3736f21a54"
+    },
+    {
+      "path": "google-apps-script/Engine.gs",
+      "sha256": "70c61033995500efe751995ab9d0569de48ffdc237e297e317b2a90902a5428c"
+    },
+    {
+      "path": "templates/inbound.csv",
+      "sha256": "25651680c64525ea50d533867a7242ae01a2361b9af306391f018698c405d610"
+    },
+    {
+      "path": "templates/invoice-lines.csv",
+      "sha256": "5845ee77dd9ad17916f246b451043135e658af546b853868d1afe375fe237c0a"
+    },
+    {
+      "path": "templates/orders.csv",
+      "sha256": "45b6c7f0e8033d73777a6253efa87e0213d9aecc11c0e984026fa52b410efe12"
+    },
+    {
+      "path": "tests/frontend.test.mjs",
+      "sha256": "20b9cd32b0270a44c076ea1c3452d713be54571a3b376e3708309a38ffe1fe9b"
+    },
+    {
+      "path": "tests/journal.test.mjs",
+      "sha256": "e1f33e41c596b6704e995c45759de3102a554ff753e34612073d6ae787b1ebd5"
+    },
+    {
+      "path": "tests/security.test.mjs",
+      "sha256": "8d08c47acbba2bd5bd27174c5d904269cf30bfd4961bbca8d92ec2743ead0aa0"
+    },
+    {
+      "path": "tests/workflow.test.mjs",
+      "sha256": "dddaa386aaffcf247fdb9cc48b6b3a8c7249f3a0d8952264e751b90812799ceb"
+    },
+    {
+      "path": "tools/build.mjs",
+      "sha256": "7f40e0b5707bddb277d0b475358b7b382a63e8a710f1a0a520a88047ff98792b"
+    },
+    {
+      "path": "tools/check-package.mjs",
+      "sha256": "ced8c02587a6d1ba264d1d7763da4f4c82aeb5c4cfcdfeb1a116830b7928d15a"
+    },
+    {
+      "path": "web/app.js",
+      "sha256": "b5fd1ca16e824520f2dc656c4f533c4cf655826e8173bddde289c5cb14d8c045"
+    },
+    {
+      "path": "web/index.html",
+      "sha256": "d08b488178d380ad5205dec072da1f6ededa54330d03a1948c1f4840329e744d"
+    },
+    {
+      "path": "web/invoice.css",
+      "sha256": "d3745e17fe11ff364ebe1af38114206139b28d94ff517fa597e4e8eb0233b2e4"
+    },
+    {
+      "path": "web/styles.css",
+      "sha256": "d9196ef761514c675700b70c1ab055893c615e9f9e62cf57b3d45240834361cb"
+    },
+    {
+      "path": "netlify/functions/wms.mjs",
+      "sha256": "5ed817c2edd8b59c7da469db110f0d83e276d6e4a01a0af1c2a55076343ee401"
+    }
+  ]
+}
