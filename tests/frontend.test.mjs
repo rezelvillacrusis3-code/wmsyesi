@@ -9,3 +9,13 @@ test('CSV parser supports quoted commas, leading zero identifiers and rejects in
 test('stock and financial tables escape untrusted values',()=>{
  const a=app();const rendered=a.run(`tableHtml([{article:'<script>alert(1)</script>',qty:1}],['article','qty'])`);assert.match(rendered,/&lt;script&gt;/);assert.doesNotMatch(rendered,/<script>/);
 });
+
+test('Google Sheet inbound headers map identifiers and require a warehouse location',()=>{
+ const a=app();const rows=a.run(`normalizeInboundRows([{'PART NO':'00042','SERIALS':'000007','IMEI 1':'001234','DESCRIPTION':'Phone'}],'R1')`);
+ assert.equal(rows[0].article,'00042');assert.equal(rows[0].serial,'000007');assert.equal(rows[0].qty,'1');assert.equal(rows[0].location,'R1');
+ assert.equal(a.run(`normalizeInboundRows([{'PART NO':'A','IMEI 1':'001234'}],'R1')[0].serial`),'001234');
+ assert.equal(a.run(`normalizeInboundRows([{'PART NO':'A','SERIALS':'S','IMEI 1':'001234'}],'R1','imei1')[0].serial`),'001234');
+ assert.throws(()=>a.run(`normalizeInboundRows([{'PART NO':'A','SERIALS':'S'}])`),/warehouse location/);
+ assert.throws(()=>a.run(`normalizeInboundRows([{'PART NO':'A'}],'R1')`),/positive quantity/);
+ const standard=a.run(`normalizeInboundRows([{article:'A',qty:'5',location:'R2'}],'R1')[0]`);assert.equal(standard.qty,'5');assert.equal(standard.location,'R2');
+});
