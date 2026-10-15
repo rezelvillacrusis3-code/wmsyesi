@@ -3,7 +3,8 @@ var SCHEMA = {
  Users:['id','email','name','role','active'],
  Clients:['id','name','contact','currency','active'],
  Locations:['id','zone','clientId','active'],
- Products:['id','clientId','article','description','barcode','serialized','expiryRequired','active'],
+ Products:['id','clientId','article','description','barcode','serialized','expiryRequired','active','supplier','model','colour'],
+ ProductUnits:['id','clientId','productId','imei1','imei2','serial','outboundImei','tracking','carton'],
  Mappings:['id','clientId','assemblyArticle','productId','units','approved'],
  Receiving:['id','clientId','reference','expected','received','damaged','status','at','by'],
  Movements:['id','stockKey','clientId','productId','article','location','batch','expiry','serial','blocked','qty','type','reference','at','by'],
@@ -28,6 +29,7 @@ function cell_(value){if(value==null)return '';if(typeof value==='object')return
 function upsertMany_(name,rows){if(!rows.length)return;var sheet=table_(name),headers=SCHEMA[name],existing=read_(name),indices=Object.create(null);existing.forEach(function(r,i){indices[r.id]=i+2;});var append=[];rows.forEach(function(row){var values=headers.map(function(k){return cell_(row[k]);});if(indices[row.id])sheet.getRange(indices[row.id],1,1,headers.length).setValues([values]);else {indices[row.id]=sheet.getLastRow()+append.length+1;append.push(values);}});if(append.length)sheet.getRange(sheet.getLastRow()+1,1,append.length,headers.length).setValues(append);}
 function setupWms(){
  var p=props_();var id=p.getProperty('SPREADSHEET_ID');if(!id){id=SpreadsheetApp.create('YESI Fulfillment WMS').getId();p.setProperty('SPREADSHEET_ID',id);}
+ var productSheet=SpreadsheetApp.openById(id).getSheetByName('Products');if(productSheet&&productSheet.getLastRow()>0){var oldHeaders=productSheet.getRange(1,1,1,productSheet.getLastColumn()).getValues()[0];for(var h=0;h<oldHeaders.length;h++)if(oldHeaders[h]!==SCHEMA.Products[h])throw new Error('Products headers do not match the WMS schema. Back up and review the sheet before updating.');if(oldHeaders.length<SCHEMA.Products.length)productSheet.getRange(1,oldHeaders.length+1,1,SCHEMA.Products.length-oldHeaders.length).setValues([SCHEMA.Products.slice(oldHeaders.length)]);}
  var sheet=SpreadsheetApp.openById(id);Object.keys(SCHEMA).forEach(function(name){var s=sheet.getSheetByName(name)||sheet.insertSheet(name);if(s.getLastRow()===0){s.getRange(1,1,1,SCHEMA[name].length).setValues([SCHEMA[name]]);s.setFrozenRows(1);s.getRange(1,1,1,SCHEMA[name].length).setBackground('#112b49').setFontColor('#ffffff').setFontWeight('bold');s.autoResizeColumns(1,SCHEMA[name].length);}});
  if(!p.getProperty('DOCUMENTS_FOLDER_ID'))p.setProperty('DOCUMENTS_FOLDER_ID',DriveApp.createFolder('YESI WMS Documents').getId());
  var email=(p.getProperty('ADMIN_EMAIL')||'').toLowerCase();if(!email)throw new Error('Set ADMIN_EMAIL in Script Properties, then run setupWms again.');

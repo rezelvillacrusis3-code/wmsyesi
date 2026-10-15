@@ -1,4 +1,4 @@
-export const TABLES = ['Users','Clients','Locations','Products','Mappings','Receiving','Movements','Orders','Picks','Scans','Shipments','Returns','Invoices','Payments','Documents','Audit'];
+export const TABLES = ['Users','Clients','Locations','Products','ProductUnits','Mappings','Receiving','Movements','Orders','Picks','Scans','Shipments','Returns','Invoices','Payments','Documents','Audit'];
 export const ROLES = ['ADMIN','MANAGER','INBOUND','PICKER','PACKER','DISPATCH','FINANCE','VIEWER'];
 export class WmsError extends Error { constructor(message,code='VALIDATION'){super(message);this.code=code;} }
 const fail=(message,code)=>{throw new WmsError(message,code);};
@@ -38,12 +38,28 @@ export function execute(initial,user,action,input,requestId,now=new Date().toISO
   allow(master);const key=text(input.id,'Client ID');result=put('Clients',{id:key,name:text(input.name,'Client name'),contact:optional(input.contact),currency:text(input.currency||'AED','Currency',3).toUpperCase(),active:input.active!==false});
  }else if(action==='location.save'){
   allow(master);result=put('Locations',{id:text(input.id,'Location code'),zone:text(input.zone||'GENERAL','Zone'),clientId:optional(input.clientId),active:input.active!==false});if(result.clientId)active(state.Clients,result.clientId,'Client');
+ }else if(action==='products.import'){
+  allow(master);active(state.Clients,input.clientId,'Client');if(!Array.isArray(input.rows)||!input.rows.length||input.rows.length>200)fail('Import between 1 and 200 product rows.');
+  for(let index=0;index<input.rows.length;index++){
+   const row=input.rows[index],article=text(row.article,'PART NO');const existing=state.Products.find(p=>p.clientId===input.clientId&&p.article===article);
+   const plan=execute(state,user,'product.save',{...existing,...row,id:existing?.id||'',clientId:input.clientId,serialized:existing?existing.serialized:Boolean(row.imei1||row.imei2||row.serial),active:existing?existing.active:true},requestId+'-row-'+index,now);
+   for(const op of plan.ops)if(op.table!=='Audit')put(op.table,op.row);
+  }result={count:input.rows.length};
  }else if(action==='product.save'){
+
   allow(master);active(state.Clients,input.clientId,'Client');const article=text(input.article,'Article');const key=input.id||id('PRD');
   const previous=state.Products.find(p=>p.id===key);if(previous&&previous.clientId!==input.clientId)fail('A product cannot be moved to another client. Create a new product instead.');
   if(previous&&previous.serialized!==Boolean(input.serialized)&&stock(state).some(s=>s.productId===key&&s.qty>0))fail('Tracking mode cannot change while this product has stock.');
   if(state.Products.some(p=>p.clientId===input.clientId&&p.article===article&&p.id!==key))fail('This article already exists for this client.');
-  result=put('Products',{id:key,clientId:input.clientId,article,description:text(input.description,'Description',500),barcode:optional(input.barcode),serialized:Boolean(input.serialized),expiryRequired:Boolean(input.expiryRequired),active:input.active!==false});
+  result=put('Products',{id:key,clientId:input.clientId,article,description:text(input.description,'Description',500),barcode:optional(input.barcode),supplier:optional(input.supplier??previous?.supplier),model:optional(input.model??previous?.model),colour:optional(input.colour??previous?.colour),serialized:Boolean(input.serialized),expiryRequired:Boolean(input.expiryRequired),active:input.active!==false});
+  const detailFields=['imei1','imei2','serial','outboundImei','tracking','carton'];
+  if(input.unitId||detailFields.some(k=>optional(input[k]))){
+   const identifiers=['imei1','imei2','serial'];const matches=state.ProductUnits.filter(u=>u.clientId===input.clientId&&(input.unitId?u.id===input.unitId:identifiers.some(k=>optional(input[k])&&u[k]===optional(input[k]))));
+   if(matches.length>1)fail('Device identifiers match different product records.');const prior=matches[0];if(input.unitId&&!prior)fail('Product device record was not found.');if(prior&&prior.productId!==key)fail('This serial / IMEI belongs to another product.');
+   const unit={...prior,id:prior?.id||id('UNIT'),clientId:input.clientId,productId:key};for(const k of detailFields)unit[k]=optional(input[k]??prior?.[k]);
+   for(const k of identifiers)if(unit[k]&&state.ProductUnits.some(u=>u.clientId===input.clientId&&u.id!==unit.id&&u[k]===unit[k]))fail('Duplicate device '+k+'.');
+   put('ProductUnits',unit);
+  }
  }else if(action==='mapping.save'){
   allow(master);const p=active(state.Products,input.productId,'Product');const units=positive(input.units,'Component quantity');result=put('Mappings',{id:input.id||id('MAP'),clientId:p.clientId,assemblyArticle:text(input.assemblyArticle,'Assembly article'),productId:p.id,units,approved:input.approved===true});
  }else if(action==='user.save'){

@@ -3,6 +3,15 @@ import {execute,stock,balances,TABLES,publicState} from '../core/engine.mjs';
 const admin={email:'admin@example.test',role:'ADMIN',active:true};const now='2026-10-13T08:00:00Z';
 function workspace(){const state=Object.fromEntries(TABLES.map(t=>[t,[]]));let counter=0;return {get state(){return state;},run(action,input,user=admin){const plan=execute(state,user,action,input,'testrequest'+(++counter),now);for(const {table,row} of plan.ops){const i=state[table].findIndex(r=>r.id===row.id);if(i>=0)state[table][i]=row;else state[table].push(row);}return plan.result;}};}
 function ready(){const w=workspace();w.run('client.save',{id:'C1',name:'Client One',currency:'AED'});w.run('client.save',{id:'C2',name:'Other client',currency:'AED'});w.run('location.save',{id:'R1',zone:'A'});w.run('product.save',{id:'P1',clientId:'C1',article:'A1',description:'Quantity item',barcode:'00123'});w.run('product.save',{id:'P2',clientId:'C1',article:'A2',description:'Serialized item',serialized:true});return w;}
+test('product import preserves multiple devices per part and updates repeat identifiers',()=>{
+ const w=ready();const base={article:'PHONE',description:'Phone',supplier:'Vendor',barcode:'000UPC',model:'M1',colour:'Blue',outboundImei:'000OUT',tracking:'000TRACK',carton:'000BOX'};
+ w.run('products.import',{clientId:'C1',rows:[{...base,imei1:'0001',imei2:'0002',serial:'000S1'},{...base,imei1:'0003',imei2:'0004',serial:'000S2'}]});
+ assert.equal(w.state.Products.filter(p=>p.article==='PHONE').length,1);assert.equal(w.state.ProductUnits.length,2);assert.equal(w.state.ProductUnits[0].imei1,'0001');assert.equal(w.state.ProductUnits[0].tracking,'000TRACK');assert.equal(w.state.Products.find(p=>p.article==='PHONE').supplier,'Vendor');assert.equal(stock(w.state).length,0);
+ w.run('products.import',{clientId:'C1',rows:[{...base,imei1:'0001',serial:'000S1',carton:'NEW'}]});assert.equal(w.state.ProductUnits.length,2);assert.equal(w.state.ProductUnits[0].carton,'NEW');assert.equal(w.state.ProductUnits[0].imei2,'0002');
+ const before=JSON.stringify(w.state);assert.throws(()=>w.run('products.import',{clientId:'C1',rows:[{...base,imei1:'NEW'},{...base,article:'OTHER',imei1:'0001'}]}),/another product/);assert.equal(JSON.stringify(w.state),before);
+ assert.throws(()=>w.run('products.import',{clientId:'C1',rows:[base]},{email:'viewer',role:'VIEWER',active:true}),/role/);
+ w.run('products.import',{clientId:'C2',rows:[{...base,imei1:'0001'}]});assert.equal(w.state.ProductUnits.length,3);
+});
 test('complete receive → allocate → pick → pack → shipment → return workflow',()=>{
  const w=ready();w.run('inbound.post',{clientId:'C1',reference:'IN-1',rows:[{article:'A1',qty:10,location:'R1'}]});assert.equal(stock(w.state)[0].qty,10);
  w.run('orders.import',{clientId:'C1',rows:[{orderNo:'O1',tracking:'T1',article:'A1',qty:3}]});const order=w.state.Orders[0];w.run('pick.allocate',{orderId:order.id});const pick=w.state.Picks[0];assert.equal(stock(w.state)[0].available,7);assert.equal(stock(w.state)[0].qty,10);

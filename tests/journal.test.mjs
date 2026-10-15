@@ -25,3 +25,7 @@ test('journal recovers an interrupted multi-sheet inbound write without duplicat
  const third=g.request('inbound.post',input);assert.equal(third.ok,true);assert.equal(g.read('Movements').length,1);
  const changed=g.request('inbound.post',{...input,rows:[{article:'A1',qty:3,location:'R1'}]});assert.equal(changed.ok,false);assert.match(changed.error,/different data/);
 });
+test('product imports persist device columns and retry without duplicate devices',()=>{
+ const g=gateway();const input={clientId:'C1',rows:[{article:'PHONE',description:'Phone',supplier:'V',model:'M',colour:'Blue',imei1:'000001',imei2:'000002',serial:'000S',barcode:'000UPC',outboundImei:'000OUT',tracking:'000TRACK',carton:'000BOX'},{article:'PHONE',description:'Phone',supplier:'V',imei1:'000003',serial:'000S2'}]};
+ const result=g.request('products.import',input);assert.equal(result.ok,true,JSON.stringify(result));assert.equal(g.read('Products').filter(p=>p.article==='PHONE').length,1);assert.equal(g.read('ProductUnits').length,2);assert.equal(g.read('ProductUnits')[0].imei1,'000001');assert.equal(g.read('ProductUnits')[0].carton,'000BOX');assert.equal(g.read('Products').find(p=>p.article==='PHONE').supplier,'V');assert.equal(g.request('products.import',input).ok,true);assert.equal(g.read('ProductUnits').length,2);
+});

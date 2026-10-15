@@ -56,8 +56,8 @@ function body(){
  return `${toolbar()}<section class="panel" id="data-table">${table()}</section>`;
 }
 function tableData(key=view){
- const spec={receiving:['Receiving',['reference','clientId','expected','received','damaged','status','at']],inbound:['Movements',['clientId','article','qty','location','batch','expiry','serial','reference','at']],stock:['stock',['clientId','article','location','batch','expiry','serial','qty','reserved','available','blocked']],orders:['Orders',['orderNo','tracking','clientId','article','qty','status']],picks:['Picks',['article','location','qty','pickedQty','packedQty','assignedTo','status']],packing:['Picks',['article','location','qty','pickedQty','packedQty','status']],shipments:['Shipments',['reference','clientId','carrier','tracking','status','at','shippedAt']],returns:['Returns',['clientId','pickId','qty','damaged','reason','at']],billing:['balances',['invoiceNo','clientId','direction','currency','totalMinor','paidMinor','balanceMinor','status','dueDate']],documents:['Documents',['name','clientId','kind','invoiceId','shipmentId','size','at']],clients:['Clients',['id','name','contact','currency','active']],products:['Products',['id','clientId','article','description','barcode','serialized','expiryRequired','active']],locations:['Locations',['id','zone','clientId','active']],mappings:['Mappings',['clientId','assemblyArticle','productId','units','approved']],users:['Users',['email','name','role','active']],reports:['Movements',['at','type','clientId','article','location','qty','reference','by']]};
- const [source,columns]=spec[key]||['Orders',['id']];let rows=state[source]||[];if(key==='inbound')rows=rows.filter(m=>m.type==='INBOUND');if(['picks','packing'].includes(key)){rows=rows.filter(p=>!['CANCELLED','SHIPPED'].includes(p.status)).map(p=>({...p,orderNo:state.Orders.find(o=>o.id===p.orderId)?.orderNo||'',tracking:state.Orders.find(o=>o.id===p.orderId)?.tracking||''}));columns.unshift('orderNo','tracking');}
+ const spec={receiving:['Receiving',['reference','clientId','expected','received','damaged','status','at']],inbound:['Movements',['clientId','article','qty','location','batch','expiry','serial','reference','at']],stock:['stock',['clientId','article','location','batch','expiry','serial','qty','reserved','available','blocked']],orders:['Orders',['orderNo','tracking','clientId','article','qty','status']],picks:['Picks',['article','location','qty','pickedQty','packedQty','assignedTo','status']],packing:['Picks',['article','location','qty','pickedQty','packedQty','status']],shipments:['Shipments',['reference','clientId','carrier','tracking','status','at','shippedAt']],returns:['Returns',['clientId','pickId','qty','damaged','reason','at']],billing:['balances',['invoiceNo','clientId','direction','currency','totalMinor','paidMinor','balanceMinor','status','dueDate']],documents:['Documents',['name','clientId','kind','invoiceId','shipmentId','size','at']],clients:['Clients',['id','name','contact','currency','active']],products:['Products',['id','clientId','article','description','supplier','imei1','imei2','serial','barcode','model','colour','outboundImei','tracking','carton','serialized','active']],locations:['Locations',['id','zone','clientId','active']],mappings:['Mappings',['clientId','assemblyArticle','productId','units','approved']],users:['Users',['email','name','role','active']],reports:['Movements',['at','type','clientId','article','location','qty','reference','by']]};
+ const [source,columns]=spec[key]||['Orders',['id']];let rows=state[source]||[];if(key==='products')rows=rows.flatMap(p=>{const units=(state.ProductUnits||[]).filter(u=>u.productId===p.id);return units.length?units.map(u=>({...p,...u,id:p.id,unitId:u.id})): [p];});if(key==='inbound')rows=rows.filter(m=>m.type==='INBOUND');if(['picks','packing'].includes(key)){rows=rows.filter(p=>!['CANCELLED','SHIPPED'].includes(p.status)).map(p=>({...p,orderNo:state.Orders.find(o=>o.id===p.orderId)?.orderNo||'',tracking:state.Orders.find(o=>o.id===p.orderId)?.tracking||''}));columns.unshift('orderNo','tracking');}
  return {rows:rows.filter(r=>(!selectedClient||!r.clientId||r.clientId===selectedClient)&&Object.values(r).join(' ').toLowerCase().includes(search.toLowerCase())),columns};
 }
 function table(){const {rows,columns}=tableData();return tableHtml(rows,columns,true);}
@@ -65,7 +65,7 @@ function tableHtml(rows,columns,actions=false){if(!rows.length)return `<div clas
 function renderTableOnly(){const t=document.getElementById('data-table');if(t){t.innerHTML=table();bindTableActions();}}
 function rowButton(action,id,name){return `<button class="text-button" data-action="${action}" data-id="${esc(id)}">${name}</button>`;}
 function rowActions(r){
- if(['clients','products','locations','mappings','users'].includes(view)&&management())return rowButton('edit',r.id,'Edit');
+ if(['clients','products','locations','mappings','users'].includes(view)&&management())return rowButton('edit',r.unitId||r.id,'Edit');
  if(view==='stock'&&roleAllowed(['ADMIN','MANAGER','INBOUND']))return (management()?rowButton('adjust',r.stockKey,'Adjust'):'')+rowButton('transfer',r.stockKey,'Transfer');
  if(view==='orders'&&management())return (r.status==='NEW'?rowButton('allocate',r.id,'Allocate'):'')+(!['SHIPPED','CANCELLED','MANIFESTED'].includes(r.status)?rowButton('cancel',r.id,'Cancel'):'');
  if(view==='picks'&&roleAllowed(['ADMIN','MANAGER','PICKER']))return rowButton('pick',r.id,'Confirm pick');
@@ -78,6 +78,7 @@ function bindActions(){
  const specs={receiving:['New inspection','receiving'],inbound:['Post inbound file','inbound'],orders:['Import orders','orders'],shipments:['Create shipment','shipment'],returns:['Receive return','return'],billing:['Create invoice','invoice'],documents:['Upload document','document'],clients:['Add client','client'],products:['Add product','product'],locations:['Add location','location'],mappings:['Add mapping','mapping'],users:['Add staff account','user']};
  const allowed={receiving:['ADMIN','MANAGER','INBOUND'],inbound:['ADMIN','MANAGER','INBOUND'],orders:['ADMIN','MANAGER'],shipments:['ADMIN','MANAGER','DISPATCH'],returns:['ADMIN','MANAGER','INBOUND'],billing:['ADMIN','MANAGER','FINANCE'],documents:['ADMIN','MANAGER','INBOUND','DISPATCH','FINANCE'],clients:['ADMIN','MANAGER'],products:['ADMIN','MANAGER'],locations:['ADMIN','MANAGER'],mappings:['ADMIN','MANAGER'],users:['ADMIN']};
  const target=document.getElementById('actions');if(specs[view]&&roleAllowed(allowed[view])){const [name,type]=specs[view];target.innerHTML=`<button class="primary" id="create">＋ ${name}</button>`;document.getElementById('create').onclick=()=>openForm(type);}
+ if(view==='products'&&management()){target.insertAdjacentHTML('beforeend',' <button class="secondary" id="import-products">Import XLSX / CSV / PDF</button>');document.getElementById('import-products').onclick=()=>openForm('productImport');}
  if(view==='orders'&&management()){target.insertAdjacentHTML('beforeend',' <button class="secondary" id="allocate-batch">Allocate new lines</button>');document.getElementById('allocate-batch').onclick=async()=>{try{if(!selectedClient)throw Error('Select a client before bulk allocation.');const ids=state.Orders.filter(o=>o.clientId===selectedClient&&o.status==='NEW').slice(0,200).map(o=>o.id);if(!ids.length)throw Error('No new order lines for this client.');await mutate('pick.allocate.batch',{orderIds:ids});notice(`${ids.length} order lines allocated.`);}catch(e){notice(e.message,true);}};}
 }
 const f=(name,label,type='text',options=null,required=true,value='')=>({name,label,type,options,required,value});
@@ -86,7 +87,7 @@ function fields(type,row={}){
  const clients=selectRows(state.Clients),products=state.Products.filter(p=>p.active!==false).map(p=>[p.id,`${p.clientId} · ${p.article}`]),locations=selectRows(state.Locations,'id');
  const spec={
  client:[f('id','Client ID'),f('name','Client name'),f('contact','Contact email / phone','text',null,false),f('currency','Currency','text',null,true,'AED'),f('active','Active','checkbox',null,false,true)],
- product:[f('id','Product ID (leave blank for new)','text',null,false),f('clientId','Client','select',clients),f('article','Warehouse article'),f('description','Description'),f('barcode','Barcode / UPC','text',null,false),f('serialized','Serialized item','checkbox',null,false,false),f('expiryRequired','Require batch and expiry','checkbox',null,false,false),f('active','Active','checkbox',null,false,true)],
+ product:[f('id','Product ID (leave blank for new)','text',null,false),f('clientId','Client','select',clients),f('article','PART NO / warehouse article'),f('description','Description'),f('barcode','UPC','text',null,false),f('supplier','Supplier','text',null,false),f('model','Model','text',null,false),f('colour','Colour','text',null,false),f('unitId','Device record ID (leave blank for new)','text',null,false),f('imei1','IMEI 1','text',null,false),f('imei2','IMEI 2','text',null,false),f('serial','SERIALS','text',null,false),f('outboundImei','IMEI 1-OUT 01','text',null,false),f('tracking','KING NUMBER / TRACKING NUMBER','text',null,false),f('carton','CARTON NUMBER','text',null,false),f('serialized','Serialized item','checkbox',null,false,false),f('expiryRequired','Require batch and expiry','checkbox',null,false,false),f('active','Active','checkbox',null,false,true)],
  location:[f('id','Location code'),f('zone','Zone','text',null,true,'GENERAL'),f('clientId','Assigned client (optional)','select',clients,false),f('active','Active','checkbox',null,false,true)],
  mapping:[f('id','Mapping ID (new: leave blank)','text',null,false),f('assemblyArticle','Assembly article'),f('productId','Component product','select',products),f('units','Component units','number',null,true,1),f('approved','Approved for fulfillment','checkbox',null,false,false)],
  user:[f('email','Google account email','email'),f('name','Staff name'),f('role','Role','select',['ADMIN','MANAGER','INBOUND','PICKER','PACKER','DISPATCH','FINANCE','VIEWER'].map(r=>[r,r])),f('active','Active','checkbox',null,false,true)],
@@ -102,7 +103,8 @@ function fields(type,row={}){
  payment:[f('invoiceId','Invoice','select',state.balances.filter(i=>i.balanceMinor>0).map(i=>[i.id,`${i.clientId} · ${i.invoiceNo} · ${dollars(i.balanceMinor,i.currency)}`]),true,row.id||''),f('amount','Amount','number'),f('reference','Bank / payment reference'),f('method','Method','select',[['BANK','Bank transfer'],['CASH','Cash'],['CARD','Card'],['OTHER','Other']]),f('date','Payment date','date',null,true,today())],
  document:[f('clientId','Client','select',clients),f('invoiceId','Related invoice (optional)','select',state.Invoices.map(i=>[i.id,`${i.clientId} · ${i.invoiceNo}`]),false),f('shipmentId','Related shipment (optional)','select',state.Shipments.map(s=>[s.id,`${s.clientId} · ${s.reference}`]),false),f('kind','Document type','select',[['DOCUMENT','General document'],['DELIVERY','Delivery note'],['BILL_OF_LADING','Bill of lading'],['CUSTOMS','Customs document']]),f('file','PDF, image or XLSX (maximum 4 MB)','file')],
  invoice:[f('clientId','Client','select',clients),f('direction','Account direction','select',[['RECEIVABLE','Client receivable'],['PAYABLE','Supplier payable']]),f('invoiceNo','Invoice number'),f('currency','Currency','text',null,true,'AED'),f('issuedDate','Invoice date','date',null,true,today()),f('dueDate','Due date','date',null,true,today()),f('items','Invoice lines CSV: description,qty,unitPrice,taxRate','textarea')],
- inbound:[f('clientId','Client','select',clients),f('reference','Unique inbound reference'),f('defaultLocation','Warehouse location (when absent from CSV)','select',locations,false),f('serialColumn','Device identifier','select',[['auto','SERIALS, then IMEI 1'],['serials','SERIALS'],['imei1','IMEI 1'],['imei2','IMEI 2']],true,'auto'),f('file','Upload CSV file','file',null,false),f('rows','Stock CSV: standard headers or Google Sheet headers (PART NO, SERIALS, IMEI 1)','textarea',null,false)],
+ productImport:[f('clientId','Client','select',clients),f('sheetName','Excel worksheet name (blank uses first sheet)','text',null,false),f('file','Upload XLSX, CSV or PDF stock table','file',null,false),f('rows','Review / edit product rows CSV','textarea',null,false)],
+ inbound:[f('clientId','Client','select',clients),f('reference','Unique inbound reference'),f('defaultLocation','Warehouse location (when absent from CSV)','select',locations,false),f('serialColumn','Device identifier','select',[['auto','SERIALS, then IMEI 1'],['serials','SERIALS'],['imei1','IMEI 1'],['imei2','IMEI 2']],true,'auto'),f('sheetName','Excel worksheet name (blank uses first sheet)','text',null,false),f('file','Upload CSV, Excel (.xlsx) or PDF stock table','file',null,false),f('rows','Review / edit stock rows CSV: standard headers or Google Sheet headers (PART NO, SERIALS, IMEI 1)','textarea',null,false)],
  orders:[f('clientId','Client','select',clients),f('file','Upload CSV file','file',null,false),f('rows','Order rows CSV: orderNo,tracking,article,qty','textarea',null,false)]
  };
  return (spec[type]||[]).map(field=>({...field,value:type==='pack'&&field.name==='tracking'?'':row[field.name]??field.value}));
@@ -127,8 +129,20 @@ function openForm(type,row={}){
     const prefix=JSON.stringify(input);const key='wms-shipment-parts:'+state.user.email+':'+prefix;let completed=Number(sessionStorage.getItem(key)||0);const parts=Math.ceil(input.orderIds.length/200);
     for(let part=completed;part<parts;part++){document.getElementById('progress').textContent=`Creating manifest part ${part+1} of ${parts}…`;await api(action,{...input,reference:parts===1?input.reference:`${input.reference} / part ${part+1}`,orderIds:input.orderIds.slice(part*200,(part+1)*200)});sessionStorage.setItem(key,String(part+1));}sessionStorage.removeItem(key);await refresh();
    }
-   else if(type==='inbound'||type==='orders'){
-    if(input.file&&/\.xlsx?$/i.test(input.file.name))throw Error('Download your Google Sheet as Comma-separated values (.csv), then upload that CSV file. Excel workbooks are not supported here.');const source=input.file?await input.file.text():input.rows;if(!source.trim())throw Error('Choose a CSV file or paste rows with a header.');const raw=parseCsv(source);const parsed=type==='inbound'?normalizeInboundRows(raw,input.defaultLocation,input.serialColumn):raw;if(!parsed.length)throw Error('No data rows found.');const needed=type==='inbound'?['article','qty','location']:['orderNo','tracking','article','qty'];if(needed.some(k=>!(k in parsed[0])))throw Error('CSV headers do not match the template.');
+   else if(type==='productImport'){
+    if(input.file){const rows=normalizeProductRows(await readInboundFile(input.file,input.sheetName));form.elements.namedItem('rows').value=productRowsCsv(rows);form.elements.namedItem('file').value='';document.getElementById('progress').textContent=rows.length+' product rows extracted. Review above, then click Save reviewed products.';button.textContent='Save reviewed products';return;}
+    const rows=normalizeProductRows(parseCsv(input.rows));if(!rows.length)throw Error('Choose a file or paste product rows.');if(rows.length>200)throw Error('Import up to 200 product rows at a time.');await mutate('products.import',{clientId:input.clientId,rows});
+   }
+   else if(type==='inbound'||type==='orders') {
+    if(type==='inbound'&&input.file){
+     const raw=await readInboundFile(input.file,input.sheetName);
+     const parsed=normalizeInboundRows(raw,input.defaultLocation,input.serialColumn);if(!parsed.length)throw Error('No stock rows found.');
+     form.elements.namedItem('rows').value=stockRowsCsv(parsed);form.elements.namedItem('file').value='';
+     document.getElementById('progress').textContent=parsed.length+' rows extracted. Review the stock rows above, then click Import reviewed rows.';
+     button.textContent='Import reviewed rows';return;
+    }
+    if(input.file&&!/\.csv$/i.test(input.file.name))throw Error('Orders require a CSV file.');
+    const source=input.file?await input.file.text():input.rows;if(!source.trim())throw Error('Choose a file or paste CSV rows with a header.');const raw=parseCsv(source);const parsed=type==='inbound'?normalizeInboundRows(raw,input.defaultLocation,'auto'):raw;if(!parsed.length)throw Error('No data rows found.');const needed=type==='inbound'?['article','qty','location']:['orderNo','tracking','article','qty'];if(needed.some(k=>!(k in parsed[0])))throw Error('CSV headers do not match the template.');
     const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({type,clientId:input.clientId,reference:input.reference,parsed}))))).map(x=>x.toString(16).padStart(2,'0')).join('');
     const progressKey=`wms-bulk:${state.user.email}:${digest}`;let completed=Number(sessionStorage.getItem(progressKey)||0);
     for(let offset=completed*200;offset<parsed.length;offset+=200){document.getElementById('progress').textContent=`Processing rows ${offset+1}–${Math.min(offset+200,parsed.length)} of ${parsed.length}…`;await api(type==='inbound'?'inbound.post':'orders.import',{clientId:input.clientId,...(type==='inbound'?{reference:input.reference+' / part '+(Math.floor(offset/200)+1)}:{}),rows:parsed.slice(offset,offset+200)});sessionStorage.setItem(progressKey,String(Math.floor(offset/200)+1));}await refresh();sessionStorage.removeItem(progressKey);
@@ -138,7 +152,7 @@ function openForm(type,row={}){
  };
 }
 function bindTableActions(){document.querySelectorAll('[data-action]').forEach(button=>button.onclick=async()=>{
- const action=button.dataset.action,id=button.dataset.id;const source=tableData().rows;const row=source.find(r=>r.id===id||r.stockKey===id);
+ const action=button.dataset.action,id=button.dataset.id;const source=tableData().rows;const row=source.find(r=>r.unitId===id||(!r.unitId&&r.id===id)||r.stockKey===id);
  try{
   if(action==='edit'){const type={clients:'client',products:'product',locations:'location',mappings:'mapping',users:'user'}[view];openForm(type,row);}
   else if(['adjust','transfer','allocate','cancel','pick','pack','payment'].includes(action))openForm(action,row);
@@ -148,6 +162,64 @@ function bindTableActions(){document.querySelectorAll('[data-action]').forEach(b
   else if(action==='printInvoice'){const client=state.Clients.find(c=>c.id===row.clientId);const win=window.open('','_blank');if(!win)throw Error('Allow a new window to print the invoice.');win.document.write(`<!doctype html><html><head><title>${esc(row.invoiceNo)}</title><link rel="stylesheet" href="/invoice.css"></head><body><h1>${esc(config.companyName||'YESI Fulfillment')}</h1><h2>Invoice ${esc(row.invoiceNo)}</h2><p>Client: ${esc(client?.name)}<br>Date: ${esc(row.issuedDate)}<br>Due: ${esc(row.dueDate)}<br>Account: ${esc(row.direction)}</p><table><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Tax %</th><th>Total</th></tr></thead><tbody>${row.items.map(i=>`<tr><td>${esc(i.description)}</td><td>${i.qty}</td><td>${esc(dollars(Math.round(i.unitPrice*100),row.currency))}</td><td>${i.taxRate}</td><td>${esc(dollars(i.lineMinor+i.lineTax,row.currency))}</td></tr>`).join('')}</tbody></table><p>Subtotal: ${esc(dollars(row.subtotalMinor,row.currency))}<br>Tax: ${esc(dollars(row.taxMinor,row.currency))}<br><strong>Total: ${esc(dollars(row.totalMinor,row.currency))}</strong><br>Balance: ${esc(dollars(row.balanceMinor,row.currency))}</p><p>Use your browser’s Print command to print or save as PDF.</p></body></html>`);win.document.close();}
  }catch(e){notice(e.message,true);}finally{button.disabled=false;}
  });}
+function normalizeProductRows(rows){
+ const aliases={article:['article','partno'],description:['description'],supplier:['supplier'],imei1:['imei1'],imei2:['imei2'],serial:['serial','serials'],barcode:['barcode','upc'],model:['model'],colour:['colour','color','colo'],outboundImei:['outboundimei','imei1out01'],tracking:['tracking','kingnumbertrackingnumber','kingnumber','trackingnumber'],carton:['carton','cartonnumber']};
+ return rows.map((row,index)=>{const values={};for(const [key,value]of Object.entries(row)){const k=key.toLowerCase().replace(/[^a-z0-9]/g,'');if(k in values)throw Error('Duplicate product column: '+key);values[k]=String(value??'').trim();}const result={};for(const [field,names]of Object.entries(aliases)){const name=names.find(n=>n in values);if(name!==undefined)result[field]=values[name];}if(!result.article)throw Error('Product row '+(index+2)+' needs PART NO / article.');if(!result.description)throw Error('Product row '+(index+2)+' needs DESCRIPTION.');return result;});
+}
+function productRowsCsv(rows){const headers=['article','description','supplier','imei1','imei2','serial','barcode','model','colour','outboundImei','tracking','carton'];return [headers,...rows.map(r=>headers.map(k=>r[k]??''))].map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\n');}
+
+function stockRowsCsv(rows){const headers=['article','qty','location','batch','expiry','serial'];return [headers,...rows.map(row=>headers.map(h=>row[h]??''))].map(row=>row.map(value=>'"'+String(value).replaceAll('"','""')+'"').join(',')).join('\n');}
+function matrixStockRows(matrix){
+ const key=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ const headerIndex=matrix.findIndex(row=>row.some(v=>['article','partno'].includes(key(v))));
+ if(headerIndex<0)throw Error('No stock table found. Include article or PART NO headers.');
+ const headers=matrix[headerIndex].map(v=>String(v??'').trim());
+ const used=headers.filter(Boolean).map(key);if(new Set(used).size!==used.length)throw Error('The stock table contains duplicate headers.');
+ return matrix.slice(headerIndex+1).filter(row=>row.some(v=>String(v??'').trim())).map((row,index)=>{
+  if(row.every((v,i)=>key(v)===key(headers[i])))return null;
+  if(row.slice(headers.length).some(v=>String(v??'').trim()))throw Error('Stock row '+(index+headerIndex+2)+' has extra columns.');
+  return Object.fromEntries(headers.flatMap((h,i)=>h?[[h,String(row[i]??'').trim()]]:[]));
+ }).filter(Boolean);
+}
+function pdfStockMatrix(pages){
+ const matrix=[];let anchors=null;
+ const known=new Set(['article','partno','qty','quantity','location','batch','expiry','serial','serials','imei1','imei2','supplier','description','upc','model','colour','color','imei1out01','kingnumbertrackingnumber','cartonnumber','carton','tracking','kingnumber']);
+ const key=v=>v.toLowerCase().replace(/[^a-z0-9]/g,'');
+ for(const items of pages){
+  if(!items.some(i=>i.str.trim()))throw Error('A PDF page has no readable text. Scanned PDFs need OCR before import.');
+  const lines=[];for(const item of items.filter(i=>i.str.trim()).sort((a,b)=>b.transform[5]-a.transform[5]||a.transform[4]-b.transform[4])){let line=lines.find(l=>Math.abs(l.y-item.transform[5])<2);if(!line){line={y:item.transform[5],items:[]};lines.push(line);}line.items.push(item);}
+  for(const line of lines){
+   const cells=[];for(const item of line.items.sort((a,b)=>a.transform[4]-b.transform[4])){const last=cells.at(-1),x=item.transform[4];if(last&&x-last.end<10){last.text+=' '+item.str;last.end=x+item.width;}else cells.push({text:item.str,x,end:x+item.width});}
+   if(cells.some(c=>['article','partno'].includes(key(c.text)))){
+    if(cells.length<2||cells.some(c=>!known.has(key(c.text))))throw Error('PDF table headers could not be read reliably. Export the original sheet as XLSX or CSV.');
+    const headers=cells.map(c=>c.text);if(!anchors){matrix.push(headers);}else if(JSON.stringify(headers)!==JSON.stringify(anchors.map(c=>c.text)))throw Error('PDF pages have different table columns. Import one table at a time.');anchors=cells;continue;
+   }
+   if(!anchors)continue;
+   const row=anchors.map(()=> '');
+   for(const item of line.items){const col=anchors.findLastIndex(c=>item.transform[4]>=c.x-3);if(col<0)throw Error('PDF row is outside the stock table columns.');row[col]+=(row[col]?' ':'')+item.str;}
+   if(row.some(Boolean))matrix.push(row);
+  }
+ }
+ if(!matrix.length)throw Error('No readable stock table found in the PDF. Scanned PDFs need OCR; upload a text PDF, XLSX or CSV.');
+ return matrix;
+}
+async function readInboundFile(file,sheetName=''){
+ if(file.size>20*1024*1024)throw Error('Choose a stock file up to 20 MB.');
+ const extension=file.name.split('.').pop().toLowerCase();
+ if(extension==='csv'){const text=await file.text();const lines=text.split(/\r?\n/);const index=lines.findIndex(line=>/(?:^|[,;])\s*"?(?:article|part[ _]*no)"?\s*(?:,|$)/i.test(line));return parseCsv(index>=0?lines.slice(index).join('\n'):text);}
+ if(extension==='xlsx'||extension==='xls'){
+  const book=window.XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});
+  const name=sheetName.trim()||book.SheetNames[0];if(!book.Sheets[name])throw Error('Worksheet not found. Available sheets: '+book.SheetNames.join(', '));
+  return matrixStockRows(window.XLSX.utils.sheet_to_json(book.Sheets[name],{header:1,raw:false,defval:'',blankrows:false}));
+ }
+ if(extension==='pdf'){
+  const pdfjs=await import('/vendor/pdf.mjs');pdfjs.GlobalWorkerOptions.workerSrc='/vendor/pdf.worker.mjs';
+  const task=pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false});
+  try{const pdf=await task.promise;if(pdf.numPages>100)throw Error('Import PDFs with 100 pages or fewer.');const pages=[];for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n);pages.push((await page.getTextContent()).items.filter(i=>'str' in i));}return matrixStockRows(pdfStockMatrix(pages));}finally{await task.destroy();}
+ }
+ throw Error('Choose a CSV, Excel (.xlsx or .xls), or PDF file.');
+}
+
 function normalizeInboundRows(rows,defaultLocation='',serialColumn='auto'){
  return rows.map((row,index)=>{
   const values={};for(const [key,value] of Object.entries(row)){const name=key.toLowerCase().replace(/[^a-z0-9]/g,'');if(name in values)throw Error('Duplicate CSV header: '+key);values[name]=value;}
